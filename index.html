@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TRÒ CHƠI HỌC TẬP CÔNG NGHỆ 10 (Bản Tải Về)</title>
+  <meta name="description" content="Trò chơi học tập Công nghệ 10 (Bài 3, 4, 6) - Luyện kim, Công nghệ mới, Cách mạng công nghiệp với mini-game ghép nối, câu hỏi tình huống, tính điểm và gửi kết quả giáo viên.">
+  <!-- Tailwind CSS CDN for Standalone HTML -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- React 18 CDN for Standalone HTML -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel Standalone for inline JSX compilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      color: #1e293b;
+      background-color: #f8fafc;
+    }
+    h1, h2, h3, .font-heading {
+      font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+      color: #0f172a;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+<script src="/_aistudio-iframe.js?v=6634132a"></script></head>
+<body class="bg-gradient-to-br from-slate-50 via-sky-50/30 to-indigo-50/30 min-h-screen text-slate-800 antialiased selection:bg-indigo-600 selection:text-white">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzfNxnrblyIzK2eFu26G6MNV-M6iwM2En-WQGchCJZUL0vfZkCIJITYpHwBfRS3hiA0DQ/exec';
+    const SHEET_TARGET_ID = '1crMTFakfCs3dEtiwIt8-U5fkl084GDUVJoB6D7rebFvDsHvJGkWzjz6K';
+
+    // --- Web Audio Sound Manager ---
+    class SoundManager {
+      constructor() {
+        this.ctx = null;
+        this.muted = localStorage.getItem('cn10_muted') === 'true';
+      }
+      isMuted() { return this.muted; }
+      toggleMute() {
+        this.muted = !this.muted;
+        localStorage.setItem('cn10_muted', String(this.muted));
+        return !this.muted;
+      }
+      init() {
+        if (!this.ctx && typeof window !== 'undefined') {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playCorrect() {
+        if (this.muted) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const t = this.ctx.currentTime;
+          [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(f, t + i * 0.05);
+            gain.gain.setValueAtTime(0.1, t + i * 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.05 + 0.2);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(t + i * 0.05);
+            osc.stop(t + i * 0.05 + 0.2);
+          });
+        } catch(e) {}
+      }
+      playWrong() {
+        if (this.muted) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const t = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, t);
+          osc.frequency.linearRampToValueAtTime(140, t + 0.2);
+          gain.gain.setValueAtTime(0.12, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.2);
+        } catch(e) {}
+      }
+      playClick() {
+        if (this.muted) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.04);
+        } catch(e) {}
+      }
+    }
+    const sound = new SoundManager();
+
+    // --- Datasets for Bài 3, Bài 4, Bài 6 ---
+    const lesson3ImagePairs = [
+      { id: '1', left: 'Lò cao nhiệt độ gần 2000°C (Gang, thép)', right: 'Công nghệ luyện kim (Luyện kim đen)', exp: 'SGK Bài 3 trang 14: Luyện kim đen tạo gang thép trong lò cao tới 2000°C.' },
+      { id: '2', left: 'Rót kim loại lỏng vào khuôn đúc', right: 'Công nghệ đúc kim loại', exp: 'SGK Bài 3 trang 15: Nấu chảy kim loại rót vào khuôn tạo thân máy, vỏ động cơ.' },
+      { id: '3', left: 'Phôi quay tròn, dao gọt tách phoi', right: 'Gia công cắt gọt (Máy tiện)', exp: 'SGK Bài 3 trang 16: Tiện gia công bề mặt tròn xoay với độ chính xác và nhẵn cao.' },
+      { id: '4', left: 'Dao phay quay, gia công rãnh và mặt phẳng', right: 'Gia công cắt gọt (Máy phay)', exp: 'SGK Bài 3 trang 16: Phay dùng dao quay nhiều lưỡi gia công mặt phẳng, rãnh.' },
+      { id: '5', left: 'Hai trục cán quay ép mỏng phôi kim loại', right: 'Gia công áp lực (Cán kim loại)', exp: 'SGK Bài 3 trang 16-17: Dựa vào tính dẻo kim loại, cán làm giảm dày tăng dài.' },
+      { id: '6', left: 'Hồ quang nung nóng chảy mép nối', right: 'Công nghệ hàn kim loại', exp: 'SGK Bài 3 trang 17: Hàn nối chi tiết thành khối không tháo rời (cổng sắt, khung thép).' },
+      { id: '7', left: 'Biến thuỷ năng thành dòng điện', right: 'Công nghệ sản xuất điện (Thuỷ điện)', exp: 'SGK Bài 3 trang 19: Thuỷ điện dùng thế năng dòng nước quay tua bin máy phát.' },
+      { id: '8', left: 'Diode phát quang tiết kiệm điện (2006)', right: 'Công nghệ điện - quang (Đèn LED)', exp: 'SGK Bài 3 trang 20: Đèn LED biến điện sang quang qua diode bán dẫn.' }
+    ];
+
+    const lesson3FeaturePairs = [
+      { id: 'f1', left: 'Nấu chảy kim loại rót vào lòng khuôn đúc', right: 'Chế tạo vỏ động cơ phức tạp, thân máy', exp: 'SGK Bài 3 trang 15: Đúc tạo chi tiết rỗng phức tạp.' },
+      { id: 'f2', left: 'Lấy đi phần kim loại thừa dưới dạng phoi', right: 'Gia công chi tiết máy đòi hỏi độ chính xác cao', exp: 'SGK Bài 3 trang 16: Cắt gọt tạo chi tiết chuẩn kích thước.' },
+      { id: 'f3', left: 'Dựa vào tính dẻo kim loại, dùng ngoại lực ép biến dạng', right: 'Chế tạo ray đường sắt, dầm thép (cán, kéo, rèn)', exp: 'SGK Bài 3 trang 16-17: Gia công áp lực.' },
+      { id: 'f4', left: 'Nối các chi tiết thành khối vĩnh viễn không tháo rời', right: 'Cổng cửa sắt mỹ thuật, kết cấu khung thép', exp: 'SGK Bài 3 trang 17: Công nghệ hàn.' },
+      { id: 'f5', left: 'Biến điện năng thành cơ năng chuyển động tịnh tiến', right: 'Van điện từ tưới cây tự động, rơ le đóng ngắt mạch', exp: 'SGK Bài 3 trang 20-21: Điện - cơ tịnh tiến.' }
+    ];
+
+    const lesson3Scenarios = [
+      {
+        topic: 'Công nghệ cơ khí',
+        prompt: 'Xưởng cơ khí cần làm cổng sắt hoa văn mỹ thuật và kết cấu khung nhà thép. Công nghệ then chốt để gắn kết các thanh thép thành khối không tháo rời là gì?',
+        options: ['Công nghệ hàn kim loại', 'Công nghệ đúc khuôn kim loại', 'Công nghệ tiện cắt gọt', 'Công nghệ cán kéo'],
+        correct: 0,
+        exp: 'SGK Bài 3 trang 17: Công nghệ hàn nối các chi tiết kim loại thành một khối không thể tháo rời, ứng dụng rộng rãi làm cổng cửa sắt, giàn giáo, kết cấu nhà khung thép.'
+      },
+      {
+        topic: 'Gia công cơ khí',
+        prompt: 'Bác thợ cơ khí cần tạo trục máy hình trụ tròn xoay từ phôi thép tròn với độ chính xác cao. Bác nên chọn máy nào?',
+        options: ['Máy tiện kim loại', 'Máy rèn dập', 'Lò nung đúc', 'Mỏ hàn hồ quang'],
+        correct: 0,
+        exp: 'SGK Bài 3 trang 16: Máy tiện chuyên gia công bề mặt tròn xoay bằng cách gọt phoi kim loại.'
+      },
+      {
+        topic: 'Điện - cơ',
+        prompt: 'Hệ thống tưới tự động cần đóng/mở van nước khi có tín hiệu điện. Thiết bị điện - cơ dạng tịnh tiến nào được dùng?',
+        options: ['Van điện từ (Solenoid valve)', 'Quạt hút thông gió', 'Đèn huỳnh quang', 'Máy mài hai đá'],
+        correct: 0,
+        exp: 'SGK Bài 3 trang 20-21: Van điện từ dùng lực từ chuyển động tịnh tiến để đóng mở van.'
+      }
+    ];
+
+    const lesson4IdentifyPairs = [
+      { id: '4_1', left: 'Vật liệu cấu trúc 1 đến 100 nanomet', right: 'Công nghệ Nano', exp: 'SGK Bài 4 trang 23-24: Công nghệ nano (1-100nm) ứng dụng diệt khuẩn nano bạc, y tế trị ung thư.' },
+      { id: '4_2', left: 'Bản vẽ CAD -> Mã lập trình CAM -> Máy CNC cắt gọt', right: 'Công nghệ CAD/CAM/CNC', exp: 'SGK Bài 4 trang 24: Chu trình thiết kế và chế tạo tự động bằng máy tính.' },
+      { id: '4_3', left: 'Phân tách mô hình 3D thành lớp 2D đắp chồng', right: 'Công nghệ In 3D', exp: 'SGK Bài 4 trang 25: In 3D đắp lớp tuần tự tạo đốt sống y tế, đồ gá, mô hình.' },
+      { id: '4_4', left: 'Chuyển hoá năng lượng gió, mặt trời, địa nhiệt', right: 'Công nghệ năng lượng tái tạo', exp: 'SGK Bài 4 trang 26: Nguồn vô hạn, sạch và bảo vệ môi trường.' },
+      { id: '4_5', left: 'Mô phỏng trí tuệ con người trên máy tính', right: 'Trí tuệ nhân tạo (AI)', exp: 'SGK Bài 4 trang 27: AI tự động hoá hành vi thông minh, xe tự lái.' },
+      { id: '4_6', left: 'Kết nối vạn vật qua internet (Kevin Ashton 1999)', right: 'Internet vạn vật (IoT)', exp: 'SGK Bài 4 trang 28: Thiết bị trao đổi dữ liệu tự động qua mạng.' }
+    ];
+
+    const lesson4Categorize = [
+      { text: 'Đưa hạt nano bạc vào sợi vải để thu hút và tiêu diệt vi khuẩn gây mùi trong áo quần', cat: 'Công nghệ Nano', exp: 'SGK Bài 4 trang 24: Ứng dụng may mặc hạt nano bạc kháng khuẩn.' },
+      { text: 'Chế tạo đốt sống nhân tạo thay thế cho bệnh nhân bằng cách đắp từng lớp vật liệu sinh học', cat: 'Công nghệ In 3D', exp: 'SGK Bài 4 trang 25-26: In 3D chế tạo đốt sống y tế, khung xương sinh học.' },
+      { text: 'Thiết kế mô hình vỏ điện thoại rồi xuất mã CAM sang máy phay kim loại gia công khuôn ép', cat: 'Công nghệ CAD/CAM/CNC', exp: 'SGK Bài 4 trang 24-25: Gia công khuôn ép vỏ điện thoại.' },
+      { text: 'Hệ thống xe ô tô tự lái nhận biết biển báo, vật cản và người đi bộ để tự đánh lái', cat: 'Trí tuệ nhân tạo (AI)', exp: 'SGK Bài 4 trang 27: Xe tự lái sử dụng trí tuệ nhân tạo AI phân tích.' },
+      { text: 'Cảm biến đo độ ẩm đất trong trang trại tự gửi tín hiệu qua internet để kích hoạt máy bơm tưới', cat: 'Internet vạn vật (IoT)', exp: 'SGK Bài 4 trang 28: Kết nối máy tính, cảm biến và thiết bị qua internet.' },
+      { text: 'Khai thác nhiệt sâu dưới lòng đất để sưởi ấm toà nhà và cung cấp nước nóng mùa đông', cat: 'Công nghệ Năng lượng tái tạo', exp: 'SGK Bài 4 trang 26-27: Năng lượng địa nhiệt thân thiện môi trường.' }
+    ];
+
+    const lesson4Scenarios = [
+      {
+        topic: 'In 3D tạo mẫu nhanh',
+        prompt: 'Nhóm học sinh hoàn thành bản vẽ vỏ flycam và cần làm đúng 01 mẫu thử nghiệm thực tế ngay trong chiều để đo đạc lắp thử động cơ mà không muốn tốn chi phí đúc khuôn. Công nghệ tối ưu là gì?',
+        options: ['Công nghệ In 3D', 'Công nghệ đúc kim loại áp lực', 'Công nghệ rèn dập nóng', 'Công nghệ luyện kim màu'],
+        correct: 0,
+        exp: 'SGK Bài 4 trang 25: In 3D từ mô hình máy tính có thể in trực tiếp trong vài giờ mà không cần chế tạo khuôn mẫu phức tạp.'
+      },
+      {
+        topic: 'Internet vạn vật (IoT)',
+        prompt: 'Trang trại nuôi tôm cần theo dõi nồng độ oxy hòa tan và nhiệt độ nước đầm tôm từ xa liên tục 24/7, tự động bật máy sục khí khi oxy giảm. Công nghệ cốt lõi nào kết nối hệ thống này?',
+        options: ['Công nghệ Internet vạn vật (IoT)', 'Công nghệ gia công cắt gọt', 'Công nghệ hàn hồ quang MAG', 'Công nghệ đúc kim loại'],
+        correct: 0,
+        exp: 'SGK Bài 4 trang 28: IoT kết nối các thiết bị, cảm biến đo đạc qua môi trường internet để trao đổi dữ liệu tự động.'
+      }
+    ];
+
+    const lesson6Timeline = [
+      { year: 1784, title: 'Động cơ hơi nước hoàn thiện', author: 'James Watt (Scotland)', rev: 'CMCN lần 1' },
+      { year: 1786, title: 'Máy dệt vải cải tiến thoi lò xo', author: 'Edmund Cartwright (Anh)', rev: 'CMCN lần 1' },
+      { year: 1807, title: 'Tàu thuỷ chạy bằng hơi nước', author: 'Robert Fulton (Mỹ)', rev: 'CMCN lần 1' },
+      { year: 1814, title: 'Đầu máy xe lửa hơi nước', author: 'George Stephenson (Anh)', rev: 'CMCN lần 1' },
+      { year: 1882, title: 'Khai trương nhà máy điện thương mại đầu tiên', author: 'Thomas Edison (Mỹ)', rev: 'CMCN lần 2' },
+      { year: 1885, title: 'Ô tô chạy động cơ đốt trong đầu tiên', author: 'Karl Benz (Đức)', rev: 'CMCN lần 2' },
+      { year: 1908, title: 'Dây chuyền sản xuất xe hơi hàng loạt Ford', author: 'Hãng Ford (Mỹ)', rev: 'CMCN lần 2' },
+      { year: 1946, title: 'Máy tính điện tử số đa năng ENIAC', author: 'Mauchly & Eckert (Mỹ)', rev: 'CMCN lần 3' },
+      { year: 1968, title: 'Bộ điều khiển logic khả trình (PLC)', author: 'General Motors (Mỹ)', rev: 'CMCN lần 3' },
+      { year: 1990, title: 'Mạng Internet bùng nổ thương mại toàn cầu', author: 'Thế giới', rev: 'CMCN lần 3' },
+      { year: 2011, title: 'Thuật ngữ "Công nghiệp 4.0" xuất hiện tại Đức', author: 'Nước Đức', rev: 'CMCN lần 4' }
+    ];
+
+    const lesson6AchievementPairs = [
+      { id: '6a_1', left: 'Động cơ hơi nước (Watt), Máy dệt thoi lò xo, Xe lửa hơi nước', right: 'CMCN lần thứ nhất (Cuối TK XVIII, nước Anh)', exp: 'SGK Bài 6 trang 34: Động cơ hơi nước và cơ giới hoá.' },
+      { id: '6a_2', left: 'Nhà máy điện (Edison), Động cơ đốt trong (Karl Benz), Băng chuyền Ford', right: 'CMCN lần thứ hai (Cuối TK XIX, Anh, Đức, Mỹ)', exp: 'SGK Bài 6 trang 35: Điện năng và dây chuyền sản xuất hàng loạt.' },
+      { id: '6a_3', left: 'Máy tính ENIAC, Bóng bán dẫn, Bộ điều khiển PLC, Mạng Internet', right: 'CMCN lần thứ ba (Những năm 70 TK XX, Mỹ)', exp: 'SGK Bài 6 trang 36: Công nghệ thông tin và tự động hoá.' },
+      { id: '6a_4', left: 'Trí tuệ nhân tạo (AI), IoT, Big Data, In 3D, Nhà máy thông minh', right: 'CMCN lần thứ tư (Đầu TK XXI, 2011 Đức & WEF)', exp: 'SGK Bài 6 trang 37: Công nghệ số, kết nối và AI.' }
+    ];
+
+    const lesson6RoleFeatureScenarios = [
+      {
+        topic: 'Đặc trưng CMCN 1',
+        prompt: 'Đặc trưng cốt lõi của Cuộc cách mạng công nghiệp lần thứ nhất là gì?',
+        options: ['Năng lượng hơi nước và cơ giới hoá', 'Năng lượng điện và dây chuyền sản xuất hàng loạt', 'Công nghệ thông tin và tự động hoá', 'Công nghệ số, kết nối và trí tuệ nhân tạo'],
+        correct: 0,
+        exp: 'SGK Bài 6 trang 33-34: Đặc trưng của CMCN lần 1 là năng lượng hơi nước và cơ giới hoá.'
+      },
+      {
+        topic: 'Đặc trưng CMCN 2',
+        prompt: 'Đặc trưng cơ bản của Cuộc cách mạng công nghiệp lần thứ hai là gì?',
+        options: ['Năng lượng điện và dây chuyền sản xuất hàng loạt quy mô lớn', 'Hơi nước và xe lửa than', 'Dữ liệu lớn và Internet', 'Nông nghiệp thủ công'],
+        correct: 0,
+        exp: 'SGK Bài 6 trang 35: Đặc trưng của CMCN lần 2 là năng lượng điện và dây chuyền sản xuất hàng loạt.'
+      },
+      {
+        topic: 'Đặc trưng CMCN 4',
+        prompt: 'Đặc trưng cơ bản của Cuộc cách mạng công nghiệp lần thứ tư (CMCN 4.0) là gì?',
+        options: ['Công nghệ số, tính kết nối và trí tuệ nhân tạo', 'Động cơ đốt trong và tua bin', 'Bóng đèn điện và máy may', 'Kéo sợi bằng tay'],
+        correct: 0,
+        exp: 'SGK Bài 6 trang 37: Đặc trưng CMCN 4.0 là công nghệ số, tính kết nối và trí tuệ nhân tạo.'
+      }
+    ];
+
+    // --- Main Application Component ---
+    function App() {
+      const [studentId, setStudentId] = useState(localStorage.getItem('cn10_id') || '');
+      const [studentName, setStudentName] = useState(localStorage.getItem('cn10_name') || '');
+      const [studentClass, setStudentClass] = useState(localStorage.getItem('cn10_class') || '10C05');
+      const [difficulty, setDifficulty] = useState('easy');
+      const [screen, setScreen] = useState('lobby'); // lobby, match, categorize, timeline, scenario, review
+      const [gameData, setGameData] = useState(null);
+      const [score, setScore] = useState(0);
+      const [timeSec, setTimeSec] = useState(60);
+      const [isMuted, setIsMuted] = useState(sound.isMuted());
+      const [showProfileModal, setShowProfileModal] = useState(!studentName);
+      const [wrongItems, setWrongItems] = useState(JSON.parse(localStorage.getItem('cn10_wrongs') || '[]'));
+      const [lastResult, setLastResult] = useState(null);
+      const [syncMsg, setSyncMsg] = useState('');
+
+      const saveStudent = (id, name, cls) => {
+        setStudentId(id);
+        setStudentName(name);
+        setStudentClass(cls);
+        localStorage.setItem('cn10_id', id);
+        localStorage.setItem('cn10_name', name);
+        localStorage.setItem('cn10_class', cls);
+        setShowProfileModal(false);
+      };
+
+      const recordWrong = (item) => {
+        const updated = [...wrongItems, item];
+        setWrongItems(updated);
+        localStorage.setItem('cn10_wrongs', JSON.stringify(updated));
+      };
+
+      const sendToSheet = async (res) => {
+        setSyncMsg('Đang gửi kết quả đến Google Sheets giáo viên...');
+        try {
+          const payload = {
+            sheetId: SHEET_TARGET_ID,
+            spreadsheetId: SHEET_TARGET_ID,
+            timestamp: new Date().toLocaleString('vi-VN'),
+            thoiGian: new Date().toLocaleString('vi-VN'),
+            studentId: studentId || '',
+            maHocSinh: studentId || '',
+            studentName: studentName || 'Học sinh',
+            hoVaTen: studentName || 'Học sinh',
+            hoTen: studentName || 'Học sinh',
+            name: studentName || 'Học sinh',
+            studentClass: studentClass || '10C05',
+            lop: studentClass || '10C05',
+            className: studentClass || '10C05',
+            lessonName: res.lessonName,
+            baiHoc: res.lessonName,
+            modeName: res.modeName,
+            cheDo: res.modeName,
+            difficulty: difficulty === 'hard' ? 'Khó' : 'Dễ',
+            mucDo: difficulty === 'hard' ? 'Khó' : 'Dễ',
+            score: res.score,
+            diem: res.score,
+            diemSo: res.score,
+            maxScore: res.maxScore,
+            diemToiDa: res.maxScore,
+            percentage: Math.round((res.score / Math.max(1, res.maxScore)) * 100) + '%',
+            tiLeDung: Math.round((res.score / Math.max(1, res.maxScore)) * 100) + '%',
+            correctCount: res.correct,
+            soCauDung: res.correct,
+            totalCount: res.total,
+            tongSoCau: res.total,
+            timeSpentSeconds: res.time,
+            thoiGianGiay: res.time,
+            thoiGianLamBai: `${Math.floor(res.time / 60)}p ${res.time % 60}s`,
+            wrongQuestionsSummary: res.wrongs.map(w => `[${w.topic}] ${w.prompt} -> Chọn: ${w.ans}, Đúng: ${w.cor}`).join(' | '),
+            cauSai: res.wrongs.map(w => `[${w.topic}] ${w.prompt} -> Chọn: ${w.ans}, Đúng: ${w.cor}`).join(' | ')
+          };
+
+          await fetch(GOOGLE_APPS_SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          setSyncMsg('Đã ghi nhận và gửi thành công về Google Sheets của giáo viên!');
+        } catch(e) {
+          setSyncMsg('Đã lưu trên máy. Không thể kết nối máy chủ Google Sheets.');
+        }
+      };
+
+      // --- Matching Game Sub-Component ---
+      function MatchingView({ pairs, lessonTitle, modeTitle }) {
+        const [leftList, setLeftList] = useState([]);
+        const [rightList, setRightList] = useState([]);
+        const [selLeft, setSelLeft] = useState(null);
+        const [selRight, setSelRight] = useState(null);
+        const [matched, setMatched] = useState([]);
+        const [curScore, setCurScore] = useState(0);
+        const [timer, setTimer] = useState(difficulty === 'hard' ? 40 : 80);
+        const [exp, setExp] = useState(null);
+        const startRef = useRef(Date.now());
+
+        useEffect(() => {
+          const count = difficulty === 'hard' ? 6 : 4;
+          const chosen = [...pairs].sort(() => 0.5 - Math.random()).slice(0, count);
+          setLeftList([...chosen].sort(() => 0.5 - Math.random()));
+          setRightList([...chosen].sort(() => 0.5 - Math.random()));
+        }, [pairs]);
+
+        useEffect(() => {
+          const id = setInterval(() => {
+            setTimer(t => t > 0 ? t - 1 : 0);
+          }, 1000);
+          return () => clearInterval(id);
+        }, []);
+
+        const checkMatch = (lId, rId) => {
+          const lItem = leftList.find(x => x.id === lId);
+          const rItem = rightList.find(x => x.id === rId);
+          if (lId === rId) {
+            sound.playCorrect();
+            const pts = difficulty === 'hard' ? 200 : 100;
+            const newScore = curScore + pts;
+            setCurScore(newScore);
+            const newMatched = [...matched, lId];
+            setMatched(newMatched);
+            setExp(lItem.exp);
+            setSelLeft(null);
+            setSelRight(null);
+            if (newMatched.length === leftList.length) {
+              if (window.confetti) window.confetti({ particleCount: 50, spread: 60 });
+              setTimeout(() => {
+                const res = {
+                  lessonName: lessonTitle,
+                  modeName: modeTitle,
+                  score: newScore,
+                  maxScore: leftList.length * pts,
+                  correct: leftList.length,
+                  total: leftList.length,
+                  time: Math.round((Date.now() - startRef.current) / 1000),
+                  wrongs: []
+                };
+                setLastResult(res);
+                sendToSheet(res);
+                setScreen('result');
+              }, 1200);
+            }
+          } else {
+            sound.playWrong();
+            recordWrong({
+              topic: lessonTitle,
+              prompt: `Ghép: ${lItem.left}`,
+              ans: rItem.right,
+              cor: lItem.right,
+              exp: lItem.exp
+            });
+            setTimeout(() => {
+              setSelLeft(null);
+              setSelRight(null);
+            }, 600);
+          }
+        };
+
+        return (
+          <div className="max-w-4xl mx-auto space-y-4">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+              <button onClick={() => setScreen('lobby')} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">← Về trang chủ</button>
+              <div className="text-center font-bold text-slate-800 text-sm">{modeTitle}</div>
+              <div className="flex gap-3 text-xs font-mono font-bold">
+                <span className="text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">Điểm: {curScore}</span>
+                <span className="text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200">Thời gian: {timer}s</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2.5">
+                <div className="text-xs font-bold text-indigo-700 uppercase tracking-wider px-1">Cột A: Đặc Điểm / Hình Ảnh</div>
+                {leftList.map(item => {
+                  const isDone = matched.includes(item.id);
+                  const isSel = selLeft === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      disabled={isDone}
+                      onClick={() => {
+                        sound.playClick();
+                        setSelLeft(item.id);
+                        if (selRight) checkMatch(item.id, selRight);
+                      }}
+                      className={`w-full p-3.5 text-left rounded-xl border text-sm font-semibold transition-all ${
+                        isDone ? 'bg-emerald-50 border-emerald-300 text-emerald-900 opacity-90' :
+                        isSel ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-400 text-indigo-950 shadow-md scale-[1.01]' :
+                        'bg-white hover:bg-slate-50 border-slate-200 text-slate-800 shadow-2xs'
+                      }`}
+                    >
+                      {item.left}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="space-y-2.5">
+                <div className="text-xs font-bold text-sky-700 uppercase tracking-wider px-1">Cột B: Tên Công Nghệ / Ứng Dụng</div>
+                {rightList.map(item => {
+                  const isDone = matched.includes(item.id);
+                  const isSel = selRight === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      disabled={isDone}
+                      onClick={() => {
+                        sound.playClick();
+                        setSelRight(item.id);
+                        if (selLeft) checkMatch(selLeft, item.id);
+                      }}
+                      className={`w-full p-3.5 text-left rounded-xl border text-sm font-semibold transition-all ${
+                        isDone ? 'bg-emerald-50 border-emerald-300 text-emerald-900 opacity-90' :
+                        isSel ? 'bg-sky-50 border-sky-500 ring-2 ring-sky-400 text-sky-950 shadow-md scale-[1.01]' :
+                        'bg-white hover:bg-slate-50 border-slate-200 text-slate-800 shadow-2xs'
+                      }`}
+                    >
+                      {item.right}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {exp && (
+              <div className="p-3.5 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-950 font-medium">
+                <strong>Giải thích SGK: </strong> {exp}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // --- Scenario Quiz Sub-Component ---
+      function ScenarioView({ list, lessonTitle, modeTitle }) {
+        const [idx, setIdx] = useState(0);
+        const [ans, setAns] = useState(null);
+        const [scScore, setScScore] = useState(0);
+        const [wrongs, setWrongs] = useState([]);
+        const startRef = useRef(Date.now());
+        const currentQ = list[idx];
+
+        const choose = (optIdx) => {
+          if (ans !== null) return;
+          setAns(optIdx);
+          const isCor = optIdx === currentQ.correct;
+          if (isCor) {
+            sound.playCorrect();
+            setScScore(s => s + (difficulty === 'hard' ? 200 : 100));
+          } else {
+            sound.playWrong();
+            const w = {
+              topic: currentQ.topic,
+              prompt: currentQ.prompt,
+              ans: currentQ.options[optIdx],
+              cor: currentQ.options[currentQ.correct],
+              exp: currentQ.exp
+            };
+            setWrongs(prev => [...prev, w]);
+            recordWrong(w);
+          }
+        };
+
+        const next = () => {
+          sound.playClick();
+          setAns(null);
+          if (idx + 1 < list.length) {
+            setIdx(i => i + 1);
+          } else {
+            const finalScore = scScore;
+            const res = {
+              lessonName: lessonTitle,
+              modeName: modeTitle,
+              score: finalScore,
+              maxScore: list.length * (difficulty === 'hard' ? 200 : 100),
+              correct: list.length - wrongs.length,
+              total: list.length,
+              time: Math.round((Date.now() - startRef.current) / 1000),
+              wrongs
+            };
+            setLastResult(res);
+            sendToSheet(res);
+            setScreen('result');
+          }
+        };
+
+        return (
+          <div className="max-w-2xl mx-auto space-y-4">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+              <button onClick={() => setScreen('lobby')} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold">← Về trang chủ</button>
+              <span className="font-bold text-slate-800 text-sm">Câu {idx + 1}/{list.length}</span>
+              <span className="text-amber-600 font-mono font-bold text-xs bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">Điểm: {scScore}</span>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <span className="text-[11px] font-bold uppercase text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200 inline-block mb-2">Chủ đề: {currentQ.topic}</span>
+              <h3 className="text-base font-bold text-slate-900 leading-relaxed">{currentQ.prompt}</h3>
+            </div>
+
+            <div className="space-y-2.5">
+              {currentQ.options.map((opt, i) => {
+                let style = 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800';
+                if (ans !== null) {
+                  if (i === currentQ.correct) style = 'bg-emerald-50 border-emerald-400 text-emerald-950 font-bold ring-2 ring-emerald-400/30';
+                  else if (i === ans) style = 'bg-rose-50 border-rose-400 text-rose-800 line-through';
+                  else style = 'bg-slate-50 border-slate-200 text-slate-400 opacity-50';
+                }
+                return (
+                  <button
+                    key={i}
+                    disabled={ans !== null}
+                    onClick={() => choose(i)}
+                    className={`w-full p-4 rounded-xl border text-left text-sm font-semibold transition-all flex items-center justify-between ${style}`}
+                  >
+                    <span>{String.fromCharCode(65 + i)}. {opt}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {ans !== null && (
+              <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-950 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="leading-relaxed"><strong>Giải thích SGK: </strong>{currentQ.exp}</div>
+                <button onClick={next} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shrink-0">
+                  {idx + 1 < list.length ? 'Câu tiếp theo →' : 'Xem kết quả'}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // --- Result Screen ---
+      function ResultView() {
+        if (!lastResult) return null;
+        return (
+          <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-3xl p-6 shadow-xl text-center space-y-4 my-8">
+            <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto text-3xl shadow-xs">🏆</div>
+            <h2 className="text-2xl font-extrabold text-slate-900 font-heading">Hoàn Thành Bài Thi!</h2>
+            <p className="text-xs text-slate-500 font-medium">{lastResult.lessonName} • {lastResult.modeName}</p>
+
+            <div className="grid grid-cols-3 gap-2 py-2">
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                <span className="text-[10px] text-slate-400 block font-semibold">Điểm số</span>
+                <span className="text-lg font-bold text-amber-600 font-mono">{lastResult.score}</span>
+              </div>
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                <span className="text-[10px] text-slate-400 block font-semibold">Đúng</span>
+                <span className="text-lg font-bold text-emerald-600 font-mono">{lastResult.correct}/{lastResult.total}</span>
+              </div>
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                <span className="text-[10px] text-slate-400 block font-semibold">Thời gian</span>
+                <span className="text-lg font-bold text-sky-600 font-mono">{lastResult.time}s</span>
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 text-left">
+              <strong className="block text-slate-800 mb-0.5">Báo cáo giáo viên ({studentName} - {studentClass}):</strong>
+              {syncMsg}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setScreen('lobby')} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md">
+                Về Trang Chủ Chọn Bài
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      const isTeacherMode =
+        (studentName.trim().toLowerCase().replace(/\s+/g, '') === 'gvmaihang') &&
+        (studentClass.includes('10C05-68') || studentId.includes('10C05-68') || studentClass === '10C05-68');
+
+      return (
+        <div className="flex flex-col min-h-screen">
+          {/* Header */}
+          <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/90 px-4 py-2.5 sticky top-0 z-30 shadow-xs">
+            <div className="max-w-6xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => setScreen('lobby')}>
+                <div className="w-9 h-9 bg-gradient-to-tr from-indigo-600 to-sky-500 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-xs">CN</div>
+                <div>
+                  <h1 className="text-base font-extrabold text-slate-900 leading-tight">CÔNG NGHỆ 10</h1>
+                  <p className="text-[10px] text-slate-500 font-semibold">Đấu Trường Trí Tuệ • KNTT</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {isTeacherMode && (
+                  <a
+                    href="Bo_Cau_Hoi_Cong_Nghe_10_GVMaiHang.docx"
+                    download="Bo_Cau_Hoi_Cong_Nghe_10_GVMaiHang.docx"
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 text-white text-xs font-bold shadow-md flex items-center gap-1.5"
+                    title="Tải trọn bộ câu hỏi & đáp án dạng file Word (.docx)"
+                  >
+                    📄 Tải File Word
+                  </a>
+                )}
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-bold truncate max-w-[200px] ${
+                    isTeacherMode
+                      ? 'bg-amber-50 border-amber-300 text-amber-950 ring-1 ring-amber-400/30'
+                      : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                  }`}
+                >
+                  {isTeacherMode ? '👩‍🏫 GV Mai Hằng (10C05-68)' : `👤 ${studentId ? `${studentId} • ` : ''}${studentName || 'Nhập tên'} (${studentClass})`}
+                </button>
+                <button
+                  onClick={() => setIsMuted(sound.toggleMute())}
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold"
+                >
+                  {isMuted ? '🔇' : '🔊'}
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* Main Area */}
+          <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6">
+            {screen === 'lobby' && (
+              <div className="space-y-6">
+                {/* Hero Banner */}
+                <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-sky-600 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full">Sách Giáo Khoa Kết Nối Tri Thức</span>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold font-heading">Trò Chơi Học Tập Công Nghệ 10</h2>
+                    <p className="text-xs sm:text-sm text-indigo-100">Bản tải về mở trực tiếp không cần mạng. Điểm số tự động gửi về Google Sheets giáo viên!</p>
+                  </div>
+                  <div className="flex gap-2 bg-white/15 p-2 rounded-2xl border border-white/25">
+                    <button
+                      onClick={() => setDifficulty('easy')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold ${difficulty === 'easy' ? 'bg-emerald-500 text-white shadow-xs' : 'text-indigo-100'}`}
+                    >
+                      🌱 Dễ (Gợi ý)
+                    </button>
+                    <button
+                      onClick={() => setDifficulty('hard')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold ${difficulty === 'hard' ? 'bg-amber-500 text-white shadow-xs' : 'text-indigo-100'}`}
+                    >
+                      🔥 Khó (x2 Điểm)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Teacher Exclusive Box */}
+                {isTeacherMode ? (
+                  <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 p-1 rounded-3xl shadow-lg">
+                    <div className="bg-white p-5 rounded-[22px] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold uppercase bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full border border-amber-300">
+                          Tài Nguyên Giáo Viên • Cô Mai Hằng (10C05-68)
+                        </span>
+                        <h3 className="text-lg sm:text-xl font-bold text-slate-900 font-heading">
+                          Tải Trọn Bộ Câu Hỏi Trò Chơi Học Tập Công Nghệ 10 (File Word .docx)
+                        </h3>
+                        <p className="text-xs text-slate-600">
+                          Bao gồm toàn bộ câu hỏi trắc nghiệm, hình ảnh minh họa SGK, bảng nối đặc điểm, dòng thời gian phát minh kèm đáp án và giải thích chi tiết theo SGK Kết Nối Tri Thức.
+                        </p>
+                      </div>
+                      <a
+                        href="Bo_Cau_Hoi_Cong_Nghe_10_GVMaiHang.docx"
+                        download="Bo_Cau_Hoi_Cong_Nghe_10_GVMaiHang.docx"
+                        className="px-5 py-3 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md shrink-0 flex items-center gap-2 cursor-pointer"
+                      >
+                        📄 TẢI FILE WORD (.DOCX)
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 flex justify-between items-center gap-2">
+                    <span><strong>Dành cho Giáo viên:</strong> Đăng nhập tài khoản Cô Mai Hằng (<span className="font-mono font-bold text-amber-950">GVMaiHang</span> - <span className="font-mono font-bold text-amber-950">10C05-68</span>) để tải bộ câu hỏi Word.</span>
+                    <button onClick={() => setShowProfileModal(true)} className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shrink-0 text-xs cursor-pointer">
+                      Đăng nhập GV
+                    </button>
+                  </div>
+                )}
+
+                {/* 3 Lessons Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {/* Bài 3 */}
+                  <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">Bài 3 (SGK tr. 14)</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 font-heading">Công Nghệ Phổ Biến</h3>
+                    <p className="text-xs text-slate-500">Luyện kim, đúc, cắt gọt tiện phay, cán kéo, hàn, thuỷ điện, đèn LED, động cơ điện.</p>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => { setGameData({ pairs: lesson3ImagePairs, lessonTitle: 'Bài 3: Công Nghệ Phổ Biến', modeTitle: 'Ghép Hình Ảnh – Tên Công Nghệ' }); setScreen('match'); }}
+                        className="w-full p-2.5 text-left rounded-xl bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-xs font-bold text-slate-800"
+                      >
+                        🎮 1. Ghép Hình Ảnh – Tên Công Nghệ
+                      </button>
+                      <button
+                        onClick={() => { setGameData({ pairs: lesson3FeaturePairs, lessonTitle: 'Bài 3: Công Nghệ Phổ Biến', modeTitle: 'Ghép Đặc Điểm – Ứng Dụng' }); setScreen('match'); }}
+                        className="w-full p-2.5 text-left rounded-xl bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-xs font-bold text-slate-800"
+                      >
+                        🧩 2. Ghép Đặc Điểm – Ứng Dụng
+                      </button>
+                      <button
+                        onClick={() => { setGameData({ list: lesson3Scenarios, lessonTitle: 'Bài 3: Công Nghệ Phổ Biến', modeTitle: 'Đoán Công Nghệ Qua Tình Huống' }); setScreen('scenario'); }}
+                        className="w-full p-2.5 text-left rounded-xl bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-xs font-bold text-slate-800"
+                      >
+                        💡 3. Đoán Công Nghệ Qua Tình Huống
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Bài 4 */}
+                  <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-200">Bài 4 (SGK tr. 23)</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 font-heading">Một Số Công Nghệ Mới</h3>
+                    <p className="text-xs text-slate-500">Nano (1-100nm), CAD/CAM/CNC, In 3D đắp lớp, năng lượng tái tạo, AI, IoT, Robot thông minh.</p>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => { setGameData({ pairs: lesson4IdentifyPairs, lessonTitle: 'Bài 4: Một Số Công Nghệ Mới', modeTitle: 'Nhận Diện Công Nghệ Mới' }); setScreen('match'); }}
+                        className="w-full p-2.5 text-left rounded-xl bg-slate-50 hover:bg-sky-50 border border-slate-200 hover:border-sky-300 text-xs font-bold text-slate-800"
+                      >
+                        🔍 1. Nhận Diện Công Nghệ Mới
+                      </button>
+                      <button
+                        onClick={() => { setGameData({ pairs: lesson4Categorize.map((c, i) => ({ id: String(i), left: c.text, right: c.cat, exp: c.exp })), lessonTitle: 'Bài 4: Một Số Công Nghệ Mới', modeTitle: 'Phân Loại Ứng Dụng' }); setScreen('match'); }}
+                        className="w-full p-2.5 text-left rounded-xl bg-slate-50 hover:bg-sky-50 border border-slate-200 hover:border-sky-300 text-xs font-bold text-slate-800"
+                      >
+                        📂 2. Phân Loại Ứng Dụng
+                      </button>
+                      <button
+                        onClick={() => { setGameData({ list: lesson4Scenarios, lessonTitle: 'Bài 4: Một Số Công Nghệ Mới', modeTitle: 'Lựa Chọn Công Nghệ Phù Hợp' }); setScreen('scenario'); }}
+                        className="w-full p-2.5 text-left rounded-xl bg-slate-50 hover:bg-sky-50 border border-slate-200 hover:border-sky-300 text-xs font-bold text-slate-800"
+                      >
+                        🎯 3. Lựa Chọn Công Nghệ Tình Huống
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Bài 6 */}
+                  <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">Bài 6 (SGK tr. 33)</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 font-heading">Cách Mạng Công Nghiệp</h3>
+                    <p className="text-xs text-slate-500">4 cuộc CMCN: Lần 1 (Hơi nước), Lần 2 (Điện), Lần 3 (CNTT, PLC), Lần 4 (Số hoá, AI, IoT, Smart Factory).</p>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => { setGameData({ pairs: lesson6AchievementPairs, lessonTitle: 'Bài 6: Cách Mạng Công Nghiệp', modeTitle: 'Ghép Thành Tựu – Cuộc Cách Mạng' }); setScreen('match'); }}
+                        className="w-full p-2.5 text-left rounded-xl bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 text-xs font-bold text-slate-800"
+                      >
+                        🏆 1. Ghép Thành Tựu – Cuộc CMCN
+                      </button>
+                      <button
+                        onClick={() => { setGameData({ pairs: lesson6Timeline.map((t, i) => ({ id: String(i), left: `${t.title} (${t.author})`, right: `Năm ${t.year} (${t.rev})`, exp: `${t.title} năm ${t.year}` })), lessonTitle: 'Bài 6: Cách Mạng Công Nghiệp', modeTitle: 'Dòng Thời Gian Các Phát Minh' }); setScreen('match'); }}
+                        className="w-full p-2.5 text-left rounded-xl bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 text-xs font-bold text-slate-800"
+                      >
+                        ⏳ 2. Sắp Xếp Dòng Thời Gian
+                      </button>
+                      <button
+                        onClick={() => { setGameData({ list: lesson6RoleFeatureScenarios, lessonTitle: 'Bài 6: Cách Mạng Công Nghiệp', modeTitle: 'Phân Biệt Đặc Trưng Và Vai Trò' }); setScreen('scenario'); }}
+                        className="w-full p-2.5 text-left rounded-xl bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 text-xs font-bold text-slate-800"
+                      >
+                        ⚖️ 3. Phân Biệt Đặc Trưng Và Vai Trò
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Integration Info Bar */}
+                <div className="p-3.5 bg-white rounded-2xl border border-slate-200 text-xs text-slate-600 flex flex-col sm:flex-row justify-between items-center gap-2">
+                  <span>Hệ thống tự động gửi dữ liệu điểm thi về Google Sheets giáo viên tại:</span>
+                  <span className="font-mono text-[11px] text-indigo-700 font-bold bg-slate-100 px-2 py-0.5 rounded">
+                    .../s/AKfycbzfNxnrblyIzK2eFu26G6MNV-M6iwM2En-WQGchCJZUL0vfZkCIJITYpHwBfRS3hiA0DQ/exec
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {screen === 'match' && gameData && (
+              <MatchingView pairs={gameData.pairs} lessonTitle={gameData.lessonTitle} modeTitle={gameData.modeTitle} />
+            )}
+
+            {screen === 'scenario' && gameData && (
+              <ScenarioView list={gameData.list} lessonTitle={gameData.lessonTitle} modeTitle={gameData.modeTitle} />
+            )}
+
+            {screen === 'result' && <ResultView />}
+          </main>
+
+          {/* Student Profile Dialog */}
+          {showProfileModal && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl space-y-4">
+                <h3 className="text-lg font-bold text-slate-900">Thông Tin Đăng Nhập</h3>
+                <p className="text-xs text-slate-600">Nhập mã, họ tên và chọn lớp để kết quả được lưu và báo cáo lên Google Sheets giáo viên.</p>
+
+                {/* Quick teacher login button */}
+                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs">
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-amber-900 font-bold">👩‍🏫 Dành cho Giáo viên:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        document.getElementById('inp_id').value = '10C05-68';
+                        document.getElementById('inp_name').value = 'GVMaiHang';
+                        document.getElementById('inp_class').value = '10C05-68';
+                      }}
+                      className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[11px] cursor-pointer"
+                    >
+                      GV Mai Hằng (10C05-68)
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-amber-800 mt-1">
+                    Đăng nhập bằng tên <strong>GVMaiHang</strong> - Lớp <strong>10C05-68</strong> để tải trọn bộ file Word câu hỏi.
+                  </p>
+                </div>
+
+                {isTeacherMode && (
+                  <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-300 text-xs space-y-1.5">
+                    <span className="text-emerald-900 font-bold block">✓ Đã xác nhận Giáo viên: Cô Mai Hằng (10C05-68)</span>
+                    <a
+                      href="Bo_Cau_Hoi_Cong_Nghe_10_GVMaiHang.docx"
+                      download="Bo_Cau_Hoi_Cong_Nghe_10_GVMaiHang.docx"
+                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm block text-center"
+                    >
+                      📄 Tải Bộ Câu Hỏi Word (.docx)
+                    </a>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Mã học sinh / Mã GV (VD: 10C05-01, 10C05-68):</label>
+                  <input
+                    id="inp_id"
+                    type="text"
+                    defaultValue={studentId}
+                    placeholder="Ví dụ: 10C05-01 hoặc 10C05-68"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-mono font-bold outline-none focus:border-indigo-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Họ và tên:</label>
+                  <input
+                    id="inp_name"
+                    type="text"
+                    defaultValue={studentName}
+                    placeholder="Ví dụ: Nguyễn Văn An hoặc GVMaiHang"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm outline-none focus:border-indigo-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Lớp học:</label>
+                  <select id="inp_class" defaultValue={studentClass || '10C05'} className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-bold outline-none">
+                    <option value="10C05">Lớp 10C05</option>
+                    <option value="10C06">Lớp 10C06</option>
+                    <option value="10C05-68">Lớp 10C05-68 (Giáo viên Mai Hằng)</option>
+                  </select>
+                </div>
+                <button
+                  onClick={() => {
+                    const id = document.getElementById('inp_id').value.trim();
+                    const n = document.getElementById('inp_name').value.trim();
+                    const c = document.getElementById('inp_class').value;
+                    if (n) saveStudent(id, n, c);
+                  }}
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md cursor-pointer"
+                >
+                  Lưu & Bắt Đầu Chơi
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <footer className="border-t border-slate-200 bg-white/90 py-3 text-center text-xs text-slate-500">
+            Công Nghệ 10 - Kết Nối Tri Thức Với Cuộc Sống • Bản Tự Chạy Độc Lập
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
